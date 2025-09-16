@@ -1,0 +1,9 @@
+{
+  "name": "com.enkrypt.totp",
+  "description": "enKrypt TOTP Secret Storage",
+  "path": "PLACEHOLDER_PATH/enkrypt_totp_host.py",
+  "type": "stdio",
+  "allowed_origins": [
+    "chrome-extension://EXTENSION_ID/"
+  ]
+}
