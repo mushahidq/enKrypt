@@ -29,6 +29,7 @@ import { onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 // import { useRestoreStore } from '../store';
 import { QRCodeService } from '@/libs/qrcode-service';
+import { SecureQRCodeService } from '@/libs/secure-qrcode-service';
 import { onboardInitializeWallets } from '@/libs/utils/initialize-wallet';
 
 const router = useRouter();
@@ -37,11 +38,12 @@ const emit = defineEmits<{
 }>();
 //const store = useRestoreStore();
 const otp = ref<string>('');
-const qrcodeService = new QRCodeService();
+const qrcodeService = new SecureQRCodeService();
 const secretKey = ref<string>('');
 const walletName = ref<string>('');
 const isInitializing = ref(false);
 
+// @TODO: fix this idk how but fix this
 const verifyOtp = async () => {
   console.log('verifyOtp called');
   console.log('otp:', otp.value);

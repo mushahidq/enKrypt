@@ -230,7 +230,9 @@ class NativeMessagingHost:
     def _read_message(self) -> dict:
         """Read the message from stdin"""
         size = self._get_message_size()
+        logging.info(f"Message size: {size}")
         message = sys.stdin.buffer.read(size).decode('utf-8')
+        logging.info(f"Received message: {message}")
         return json.loads(message)
 
     def _send_message(self, message: dict):

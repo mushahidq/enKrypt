@@ -51,11 +51,12 @@ import { routes } from '../restore-wallet/routes';
 // import { useRestoreStore } from './store';
 import { QRCodeService } from '@/libs/qrcode-service';
 import { onboardInitializeWallets } from '@/libs/utils/initialize-wallet';
+import { SecureQRCodeService } from '@/libs/secure-qrcode-service';
 
 const router = useRouter();
 //const store = useRestoreStore();
 const otp = ref('');
-const qrcodeService = new QRCodeService();
+const qrcodeService = new SecureQRCodeService();
 const qrCodeUrl = ref<string>('');
 const secretKey = ref<string>('');
 const walletName = ref<string>('');
@@ -69,6 +70,7 @@ const generateQrCode = async () => {
   );
 };
 
+// @TODO: fix this idk how but fix this
 const verifyOtp = async () => {
   const isValid = await qrcodeService.verifyOtp(otp.value, secretKey.value);
   if (isValid) {

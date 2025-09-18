@@ -1,9 +1,7 @@
 {
   "name": "com.enkrypt.totp",
   "description": "enKrypt TOTP Secret Storage",
-  "path": "PLACEHOLDER_PATH/enkrypt_totp_host.py",
+  "path": "/Users/nandiniseth/Code/enKryptTOTP/native-messaging/enkrypt_totp_host.py",
   "type": "stdio",
-  "allowed_origins": [
-    "chrome-extension://EXTENSION_ID/"
-  ]
+  "allowed_origins": ["chrome-extension://malmpkfdjofjfafefodpamhdbekcjajh"]
 }

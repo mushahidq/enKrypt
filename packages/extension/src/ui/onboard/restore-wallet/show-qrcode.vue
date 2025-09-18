@@ -50,12 +50,13 @@ import { useRouter } from 'vue-router';
 import { routes } from '../restore-wallet/routes';
 import { useRestoreStore } from './store';
 import { QRCodeService } from '@/libs/qrcode-service';
+import { SecureQRCodeService } from '@/libs/secure-qrcode-service';
 import { onboardInitializeWallets } from '@/libs/utils/initialize-wallet';
 
 const router = useRouter();
 const store = useRestoreStore();
 const otp = ref('');
-const qrcodeService = new QRCodeService();
+const qrcodeService = new SecureQRCodeService();
 const qrCodeUrl = ref<string>('');
 const secretKey = ref<string>('');
 const walletName = ref<string>('');
@@ -82,22 +83,11 @@ const generateQrCode = async () => {
   );
 };
 
-const regenerateQrCode = async () => {
-  try {
-    qrCodeUrl.value = await qrcodeService.generateQRCode(
-      secretKey.value,
-      walletName.value,
-    );
-    console.log('New QR code generated:', qrCodeUrl.value);
-  } catch (error) {
-    console.error('Error regenerating QR code:', error);
-  }
-};
-
+// @TODO: fix this idk how but fix this
 const verifyOtp = async () => {
   const isValid = await qrcodeService.verifyOtp(otp.value, secretKey.value);
   if (isValid) {
-    alert('OTP Verified! Wallet initializing...');
+    alert('OTP Verified! Wallet initializing... native messaging');
     qrcodeService.saveQRCodeConfig(secretKey.value, walletName.value);
     console.log('QR code saved:', secretKey.value, walletName.value);
     // open wallet

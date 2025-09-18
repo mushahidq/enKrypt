@@ -1,12 +1,8 @@
 #!/bin/bash
 
-# Ensure script is run with sudo on Unix-like systems
-if [[ "$OSTYPE" != "win"* ]]; then
-    if [ "$EUID" -ne 0 ]; then
-        echo "Please run with sudo for system-wide installation"
-        exit 1
-    fi
-fi
+# Note: Do not require sudo by default. The Python installer performs user-scoped
+# installs when appropriate and writes the Chrome manifest to the user location
+# on macOS/Linux. If a system-wide install is desired on Linux, re-run this with sudo.
 
 # Check if Python 3 is installed
 if ! command -v python3 &> /dev/null; then
