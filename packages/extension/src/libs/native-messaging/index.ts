@@ -25,18 +25,37 @@ export class NativeMessaging {
     // Check if we're in the background script context
     this.isBackgroundScript = this.checkIfBackgroundScript();
     if (this.isBackgroundScript) {
+      console.log('Native messaging is background script');
       this.setupConnection();
     } else {
+      console.log('Native messaging is not background script');
       this.setupMessageProxy();
     }
   }
 
   private checkIfBackgroundScript(): boolean {
     try {
-      // Background scripts have access to chrome.runtime.connectNative
-      return typeof chrome !== 'undefined' && 
-             typeof chrome.runtime !== 'undefined' && 
-             typeof chrome.runtime.connectNative === 'function';
+      // In development, we're always in non-background context
+      if (process.env.NODE_ENV === 'development') {
+        return false;
+      }
+
+      // In production, check for background script context
+      return (
+        typeof chrome !== 'undefined' &&
+        typeof chrome.runtime !== 'undefined' &&
+        (
+          // Chrome
+          typeof chrome.runtime.connectNative === 'function' ||
+          // Firefox
+          typeof browser !== 'undefined' &&
+          typeof browser.runtime !== 'undefined' &&
+          typeof browser.runtime.connectNative === 'function'
+        ) &&
+        // Additional check for service worker context
+        (typeof ServiceWorkerGlobalScope !== 'undefined' &&
+          self instanceof ServiceWorkerGlobalScope)
+      );
     } catch {
       return false;
     }
@@ -61,8 +80,11 @@ export class NativeMessaging {
             pendingMessage.reject(new Error(message.error || 'Native messaging failed'));
           }
         }
+        // Send immediate response to close the message channel properly
+        sendResponse({ received: true });
       }
-      return true; // Keep the message channel open for async response
+      // Don't return true since we're handling the response synchronously
+      return false;
     });
   }
 
@@ -72,8 +94,11 @@ export class NativeMessaging {
 
     try {
       this.port = chrome.runtime.connectNative(this.hostName);
-      
+
+      console.log('Native messaging connected:', this.port);
+      console.log('Native messaging hostName:', this.hostName);
       this.port.onMessage.addListener((response: NativeMessageResponse) => {
+        console.log('Native messaging response:', response);
         // Forward response to UI if needed
         chrome.runtime.sendMessage({
           type: 'nativeMessaging_response',
@@ -126,6 +151,7 @@ export class NativeMessaging {
   ): Promise<NativeMessageResponse<T>> {
     const message = { method, params };
 
+    console.log('Native messaging sending message:', message);
     return new Promise((resolve, reject) => {
       if (this.isBackgroundScript) {
         try {
@@ -137,24 +163,31 @@ export class NativeMessaging {
           }
 
           this.messageQueue.push({ message, resolve, reject });
+          console.log('Native messaging sending message:', message);
           this.port.postMessage(message);
         } catch (error) {
           this.messageQueue.pop(); // Remove from queue if sending failed
           reject(error);
         }
       } else {
+        console.log('Native messaging sending message through runtime messaging:', message);
         // Send message through runtime messaging
         this.messageQueue.push({ message, resolve, reject });
         chrome.runtime.sendMessage({
           type: 'nativeMessaging_request',
+          hostName: this.hostName,
           method,
-          params
+          params: { ...params }  // Ensure params are properly cloned
+        }).catch(error => {
+          console.error('Failed to send message to background:', error);
+          reject(error);
         });
       }
     });
   }
 
   public disconnect() {
+    console.log('Native messaging disconnecting:', this.port);
     if (this.port) {
       this.port.disconnect();
       this.port = null;

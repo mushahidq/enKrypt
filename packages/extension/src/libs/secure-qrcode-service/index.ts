@@ -69,6 +69,7 @@ export class SecureQRCodeService implements ISecureQRCodeService {
    */
   async saveQRCodeConfig(secret: string, walletName: string): Promise<void> {
     try {
+      console.log('Saving QR code configuration:', secret, walletName);
       const response = await this.nativeMessaging.sendMessage<void>('saveSecret', {
         secret,
         walletName

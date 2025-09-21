@@ -14,9 +14,12 @@ import base64
 
 # Configure logging
 logging.basicConfig(
-    level=logging.INFO,
+    level=logging.DEBUG,
     format='%(asctime)s - %(levelname)s - %(message)s',
-    filename='enkrypt_totp_host.log'
+    handlers=[
+        logging.FileHandler('enkrypt_totp_host.log'),
+        logging.StreamHandler()  # This will also print to console
+    ]
 )
 
 class BiometricAuth:
@@ -225,7 +228,19 @@ class NativeMessagingHost:
 
     def _get_message_size(self) -> int:
         """Read the message size from stdin"""
-        return struct.unpack('I', sys.stdin.buffer.read(4))[0]
+        try:
+            logging.debug("Waiting for message size from stdin...")
+            size_data = sys.stdin.buffer.read(4)
+            logging.debug(f"Received size data: {size_data!r}")
+            if not size_data:
+                logging.error("No size data received (EOF)")
+                raise EOFError("No data received from stdin")
+            size = struct.unpack('I', size_data)[0]
+            logging.debug(f"Unpacked message size: {size}")
+            return size
+        except Exception as e:
+            logging.error(f"Error reading message size: {str(e)}")
+            raise
 
     def _read_message(self) -> dict:
         """Read the message from stdin"""
@@ -292,8 +307,15 @@ class NativeMessagingHost:
 if __name__ == '__main__':
     try:
         logging.info("Starting native messaging host")
+        logging.info(f"Python version: {sys.version}")
+        logging.info(f"Current working directory: {os.getcwd()}")
+        logging.info(f"Script path: {os.path.abspath(__file__)}")
+        logging.info(f"Environment: {os.environ}")
+        
         host = NativeMessagingHost()
+        logging.info("Native messaging host initialized")
         host.run()
     except Exception as e:
         logging.error(f"Fatal error: {str(e)}")
+        logging.exception("Detailed error traceback:")
         sys.exit(1)
