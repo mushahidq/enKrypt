@@ -31,9 +31,18 @@ class BiometricAuth:
         """Initialize platform-specific biometric authentication"""
         if self.system == "Darwin":  # macOS
             try:
-                from LocalAuthentication import LAContext, LAPolicyDeviceOwnerAuthentication
-                self.context = LAContext.new()
+                from LocalAuthentication import (
+                    LAContext,
+                    LAPolicyDeviceOwnerAuthentication,
+                    LAError
+                )
+                # Initialize context as per Apple's documentation
+                self.context = LAContext.alloc().init()
                 self.policy = LAPolicyDeviceOwnerAuthentication
+                
+                # Set up additional options
+                self.context.setLocalizedFallbackTitle_("Use Password")  # Optional fallback title
+                self.context.setLocalizedCancelTitle_("Cancel")
             except ImportError:
                 logging.error("LocalAuthentication framework not available. Install pyobjc-framework-LocalAuthentication")
                 sys.exit(1)
@@ -59,17 +68,51 @@ class BiometricAuth:
         """Perform biometric authentication based on platform"""
         try:
             if self.system == "Darwin":
-                can_evaluate = self.context.canEvaluatePolicy_error_(self.policy, None)[0]
+                # Set up context with options
+                self.context.setLocalizedCancelTitle_("Cancel")
+                self.context.setLocalizedFallbackTitle_("Use Password")
+                
+                # Check if biometric auth is available
+                can_evaluate, error = self.context.canEvaluatePolicy_error_(self.policy, None)
                 if not can_evaluate:
-                    logging.error("Biometric authentication not available on this device")
+                    logging.error(f"Biometric authentication not available: {error}")
                     return False
                 
-                success, error = self.context.evaluatePolicy_localizedReason_error_(
-                    self.policy,
-                    reason,
-                    None
-                )
-                return success
+                # Try biometric authentication
+                try:
+                    # Print available methods for debugging
+                    methods = [method for method in dir(self.context) if not method.startswith('_')]
+                    logging.debug(f"Available methods: {methods}")
+                    
+                    import threading
+                    auth_event = threading.Event()
+                    auth_result = {"success": False, "error": None}
+
+                    def auth_callback(success, error):
+                        logging.debug(f"Auth callback - success: {success}, error: {error}")
+                        auth_result["success"] = success
+                        auth_result["error"] = error
+                        auth_event.set()
+
+                    # Use the method as specified in Apple's documentation with a callback
+                    self.context.evaluatePolicy_localizedReason_reply_(
+                        self.policy,
+                        reason,
+                        auth_callback
+                    )
+
+                    # Wait for the authentication to complete
+                    auth_event.wait(timeout=60)  # Wait up to 60 seconds
+                    
+                    if auth_result["error"]:
+                        logging.error(f"Authentication error: {auth_result['error']}")
+                        return False
+                        
+                    logging.debug(f"Final authentication result: {auth_result['success']}")
+                    return auth_result["success"]
+                except Exception as e:
+                    logging.error(f"Authentication failed: {str(e)}")
+                    return False
 
             elif self.system == "Windows":
                 try:
@@ -157,38 +200,82 @@ class TOTPSecretManager:
         
         # Use device-specific identifier as auth token
         if platform.system() == "Darwin":
-            import IOKit
-            device_id = IOKit.IORegistryEntryCreateCFProperty(
-                IOKit.IOServiceGetMatchingService(
-                    0, IOKit.IOServiceMatching("IOPlatformExpertDevice")
-                ),
-                "IOPlatformUUID", None, 0
-            )
+            try:
+                # Try using system_profiler for hardware UUID
+                import subprocess
+                result = subprocess.run(['system_profiler', 'SPHardwareDataType'], capture_output=True, text=True)
+                for line in result.stdout.split('\n'):
+                    if 'Hardware UUID' in line:
+                        device_id = line.split(':')[1].strip()
+                        break
+                else:
+                    # Fallback to using a combination of system info
+                    import hashlib
+                    import socket
+                    system_info = (
+                        platform.node() +  # Computer name
+                        platform.platform() +  # OS details
+                        socket.gethostname()  # Host name
+                    )
+                    device_id = hashlib.sha256(system_info.encode()).hexdigest()
+            except Exception as e:
+                logging.error(f"Error getting device ID: {e}")
+                # Use a fallback device ID
+                device_id = "default-device-id"
         elif platform.system() == "Windows":
             import wmi
             c = wmi.WMI()
             device_id = c.Win32_ComputerSystemProduct()[0].UUID
         else:  # Linux
-            with open('/etc/machine-id', 'r') as f:
-                device_id = f.read().strip()
+            try:
+                with open('/etc/machine-id', 'r') as f:
+                    device_id = f.read().strip()
+            except:
+                # Fallback to using dbus-uuidgen if available
+                try:
+                    import subprocess
+                    device_id = subprocess.check_output(['dbus-uuidgen', '--get']).decode().strip()
+                except:
+                    # Last resort fallback
+                    import hashlib
+                    system_info = platform.node() + platform.platform()
+                    device_id = hashlib.sha256(system_info.encode()).hexdigest()
 
         return self.key_storage.get_encryption_key(device_id)
 
     def save_secret(self, secret: str, wallet_name: str) -> bool:
         """Save encrypted TOTP secret"""
         try:
-            key = self._get_encryption_key()
+            logging.info(f"Attempting to save secret for wallet: {wallet_name}")
+            
+            # First verify we can get the encryption key (requires biometric auth)
+            try:
+                key = self._get_encryption_key()
+            except Exception as e:
+                logging.error(f"Failed to get encryption key: {str(e)}")
+                return False
+                
+            # Create Fernet cipher
             fernet = Fernet(key)
             
+            # Prepare and encrypt data
             data = {'secret': secret, 'wallet_name': wallet_name}
             encrypted = fernet.encrypt(json.dumps(data).encode())
             
-            with open(self.secrets_file, 'wb') as f:
-                f.write(encrypted)
-            os.chmod(self.secrets_file, 0o600)
-            return True
+            # Save to file with proper permissions
+            try:
+                with open(self.secrets_file, 'wb') as f:
+                    f.write(encrypted)
+                os.chmod(self.secrets_file, 0o600)  # User read/write only
+                logging.info("Successfully saved encrypted secret")
+                return True
+            except IOError as e:
+                logging.error(f"Failed to write secret file: {str(e)}")
+                return False
+                
         except Exception as e:
             logging.error(f"Error saving secret: {str(e)}")
+            logging.debug("Stack trace:", exc_info=True)
             return False
 
     def get_secret(self) -> dict:
