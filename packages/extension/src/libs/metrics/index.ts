@@ -105,7 +105,9 @@ const trackUpdatesEvents = (
   metrics.track('updatesClick', { event, ...options });
 };
 const optOutofMetrics = (optOut: boolean) => {
-  if (!__IS_FIREFOX__) {
+  // Access the global __IS_FIREFOX__ variable
+  const isFirefox = typeof __IS_FIREFOX__ !== 'undefined' ? __IS_FIREFOX__ : false;
+  if (!isFirefox) {
     metrics.setOptOut(false);
     metrics.track('settings', {
       event: SettingEventType.OptOut,
@@ -130,4 +132,5 @@ export {
   trackGenericEvents,
   trackUpdatesEvents,
   trackSolanaStakingBanner,
+  GenericEvents,
 };

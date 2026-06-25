@@ -48,18 +48,20 @@ import BaseButton from '@action/components/base-button/index.vue';
 import LockScreenPasswordInput from './components/lock-screen-password-input.vue';
 import LockScreenForgot from './components/lock-screen-forgot.vue';
 import LockScreenTimer from './components/lock-screen-timer.vue';
-import { sendToBackgroundFromAction } from '@/libs/messenger/extension';
-import { InternalMethods } from '@/types/messenger';
 import { computed } from 'vue';
 import SwapLookingAnimation from '@action/icons/swap/swap-looking-animation.vue';
-import { trackGenericEvents } from '@/libs/metrics';
-import { GenericEvents } from '@/libs/metrics/types';
+import { useRouter } from 'vue-router';
+import { trackGenericEvents, GenericEvents } from '@/libs/metrics';
+import { sendToBackgroundFromAction } from '@/libs/messenger/extension';
+import { InternalMethods } from '@/types/messenger';
+// import { __PREFILL_PASSWORD__ } from '../../../../../env';
 
+const router = useRouter();
 const emit = defineEmits<{
   (e: 'update:init'): void;
 }>();
 
-const password = ref(__PREFILL_PASSWORD__!);
+const password = ref<string>('');
 const isDisabled = computed(() => {
   return password.value.length < 5 || isUnlocking.value;
 });
@@ -68,26 +70,61 @@ const isForgot = ref(false);
 const isLocked = ref(false);
 const isUnlocking = ref(false);
 
-const unlockAction = async () => {
+const oldUnlockAction = async () => {
   isUnlocking.value = true;
+  console.log('unlockAction called');
+
   const unlockStatus = await sendToBackgroundFromAction({
     message: JSON.stringify({
       method: InternalMethods.unlock,
       params: [password.value.trim(), true],
     }),
   });
+
+  // if (unlockStatus.error) {
+  if (false) {
+  } else {
+    isError.value = false;
+    password.value = '';
+    // routing to totp screen
+    console.log('routing to totp screen');
+    router.push({ name: 'totp-validation' });
+
+    // emit('update:init');
+    //setTimeout(() => (isUnlocking.value = false), 750);
+    //trackGenericEvents(GenericEvents.login_success);
+  }
+};
+
+const unlockAction = async () => {
+  isUnlocking.value = true;
+  // password check
+  const unlockStatus = await sendToBackgroundFromAction({
+    message: JSON.stringify({
+      method: InternalMethods.unlock,
+      params: [password.value.trim(), true],
+    }),
+  });
+  // if incorrect password
   if (unlockStatus.error) {
     isError.value = true;
     isUnlocking.value = false;
     trackGenericEvents(GenericEvents.login_error);
   } else {
+    // password correct, proceed
     isError.value = false;
     password.value = '';
-    emit('update:init');
+    //emit('update:init');
+    //^^^change to make screen change to otp:
+    console.log('routing to totp screen');
+    router.push({ name: 'totp-validation' });
+    // wait and update value for smooth screen transition,
+    // and log success event
     setTimeout(() => (isUnlocking.value = false), 750);
     trackGenericEvents(GenericEvents.login_success);
   }
 };
+
 const forgotAction = () => {
   toggleForgot();
 };

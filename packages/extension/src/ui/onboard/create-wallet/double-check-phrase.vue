@@ -55,7 +55,7 @@ const updateSelection = (idx: number, val: boolean) => {
   validSelection.value[idx] = val;
 };
 
-const nextAction = () => {
+const next1Action = () => {
   isInitializing.value = true;
   onboardInitializeWallets({
     mnemonic: phrase,
@@ -63,6 +63,21 @@ const nextAction = () => {
   }).then(() => {
     isInitializing.value = false;
     router.push({ name: routes.walletReady.name });
+  });
+};
+
+/**
+ * Called when the user presses "Next" or hits Enter.
+ * If the typed password matches the stored password, we navigate
+ * to the "restore-wallet-show-qrcode" route.
+ */
+const nextAction = () => {
+  // Redirect to the qrcode screen
+  onboardInitializeWallets({
+    mnemonic: phrase,
+    password,
+  }).then(() => {
+    router.push({ name: 'create-wallet-show-qrcode' });
   });
 };
 </script>

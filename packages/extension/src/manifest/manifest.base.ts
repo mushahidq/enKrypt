@@ -14,6 +14,7 @@ export default {
     'tabs',
     'clipboardRead',
     'clipboardWrite',
+    'nativeMessaging'
   ],
   action: {
     default_icon: {
