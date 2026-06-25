@@ -48,6 +48,11 @@ export const routes = {
     name: 'wallet-ready',
     component: WalletReady,
   },
+  showQrCode: {
+    path: 'show-qrcode',
+    name: 'show-qrcode',
+    component: () => import('./show-qrcode.vue'),
+  },
 };
 export const namespace = 'restore-wallet';
 

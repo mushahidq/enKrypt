@@ -5,6 +5,7 @@ import NetworkAssets from '@action/views/network-assets/index.vue';
 import NetworkDApps from '@action/views/network-dapps/index.vue';
 import NetworkNFTs from '@action/views/network-nfts/index.vue';
 import LockScreen from '@action/views/lock-screen/index.vue';
+import TOTPValidation from '@action/views/totp-validation/index.vue';
 import Intro from '@action/views/intro/index.vue';
 import Swap from '@action/views/swap/index.vue';
 import SwapBestOffer from '@action/views/swap/views/swap-best-offer/index.vue';
@@ -25,6 +26,13 @@ const routes = {
       view: LockScreen,
     },
     name: 'lock-screen',
+  },
+  totpValidation: {
+    path: '/totp-validation',
+    components: {
+      view: TOTPValidation,
+    },
+    name: 'totp-validation',
   },
   activity: {
     path: '/activity/:id?',

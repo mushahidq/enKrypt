@@ -10,7 +10,7 @@ import { scrypt } from "ethereum-cryptography/scrypt";
 import { keccak256 } from "web3-utils";
 import { EncryptedData, Errors } from "@enkryptcom/types";
 import { bufferToHex, hexToBuffer } from ".";
-
+// import {SecureQRCodeService} from "/Users/nandiniseth/Code/enKryptTOTP/packages/extension/src/libs/secure-qrcode-servic
 const scryptParams = {
   cipher: "aes-128-ctr",
   kdf: "scrypt",
@@ -22,6 +22,95 @@ const scryptParams = {
 
 const runCipherBuffer = (cipher: Cipher | Decipher, data: Buffer): Buffer =>
   Buffer.concat([cipher.update(data), cipher.final()]);
+
+export const hashSecret = async (secret: string): Promise<Buffer> => {
+  const secretHashHex = keccak256(secret);
+  const secretHash = hexToBuffer(secretHashHex);
+  return secretHash;
+};
+
+export const encryptSecret = async (
+  secret: string,
+  password: string,
+): Promise<EncryptedData> => {
+  const sparams = {
+    ...{
+      salt: randomBytes(32),
+      iv: randomBytes(16),
+    },
+    ...scryptParams,
+  };
+  const derivedKey = await scrypt(
+    Buffer.from(password),
+    sparams.salt,
+    sparams.n,
+    sparams.p,
+    sparams.r,
+    sparams.dklen,
+  );
+  const cipher = createCipheriv(
+    sparams.cipher,
+    derivedKey.slice(0, 16),
+    sparams.iv,
+  );
+  const ciphertext = runCipherBuffer(cipher, await hashSecret(secret));
+  const mac = keccak256(
+    bufferToHex(
+      Buffer.concat([
+        Buffer.from(derivedKey.slice(16, 32)),
+        Buffer.from(ciphertext),
+      ]),
+    ),
+  );
+  return {
+    ciphertext: bufferToHex(ciphertext),
+    salt: bufferToHex(sparams.salt),
+    iv: bufferToHex(sparams.iv),
+    version: 1,
+    mac,
+  };
+};
+
+export const decryptSecret = async (
+  encryptedData: EncryptedData,
+  password: string,
+): Promise<Buffer> => {
+  const sparams = {
+    ...{
+      ciphertext: hexToBuffer(encryptedData.ciphertext),
+      salt: hexToBuffer(encryptedData.salt),
+      iv: hexToBuffer(encryptedData.iv),
+      version: encryptedData.version,
+      mac: encryptedData.mac,
+    },
+    ...scryptParams,
+  };
+  const derivedKey = await scrypt(
+    Buffer.from(password),
+    sparams.salt,
+    sparams.n,
+    sparams.p,
+    sparams.r,
+    sparams.dklen,
+  );
+  const mac = keccak256(
+    bufferToHex(
+      Buffer.concat([
+        Buffer.from(derivedKey.slice(16, 32)),
+        sparams.ciphertext,
+      ]),
+    ),
+  );
+  if (mac !== sparams.mac) throw new Error("Tampered Data!");
+  const decipher = createDecipheriv(
+    sparams.cipher,
+    derivedKey.slice(0, 16),
+    sparams.iv,
+  );
+  return runCipherBuffer(decipher, sparams.ciphertext);
+  //const secret =
+  //const secretHash = await hashSecret(secret);
+};
 
 export const encrypt = async (
   msg: Buffer,

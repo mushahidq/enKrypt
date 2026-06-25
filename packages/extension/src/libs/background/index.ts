@@ -29,6 +29,7 @@ import {
 import { handlePersistentEvents } from './external';
 import SettingsState from '../settings-state';
 import { isGeoRestricted } from '../utils/screening';
+import { NativeMessagingHandler } from './internal/native-messaging-handler';
 
 class BackgroundHandler {
   #keyring: KeyRingBase;
@@ -38,12 +39,14 @@ class BackgroundHandler {
   #domainState: DomainState;
   #settingsState: SettingsState;
   #geoRestricted: boolean | undefined;
+  #nativeMessagingHandler: NativeMessagingHandler;
 
   constructor() {
     this.#keyring = new KeyRingBase();
     this.#persistentEvents = new PersistentEvents();
     this.#domainState = new DomainState();
     this.#settingsState = new SettingsState();
+    this.#nativeMessagingHandler = new NativeMessagingHandler();
     this.#tabProviders = {
       [ProviderName.ethereum]: {},
       [ProviderName.polkadot]: {},

@@ -34,37 +34,31 @@ import { useRouter } from 'vue-router';
 import { routes } from '../restore-wallet/routes';
 import { onboardInitializeWallets } from '@/libs/utils/initialize-wallet';
 import { useRestoreStore } from './store';
-const store = useRestoreStore();
+
+// We'll redirect to "restore-wallet-show-qrcode" after password confirmation
+// Make sure you have a route definition for that final name.
 const router = useRouter();
+const store = useRestoreStore();
 
 const typePassword = ref('');
 const isInitializing = ref(false);
+
+/**
+ * Called when the user presses "Next" or hits Enter.
+ * If the typed password matches the stored password, we navigate
+ * to the "restore-wallet-show-qrcode" route.
+ */
 const nextAction = () => {
   if (!isDisabled.value) {
     isInitializing.value = true;
-    onboardInitializeWallets({
-      mnemonic: unref(store.mnemonic),
-      password: unref(store.password),
-      extraWord: unref(store.extraWord),
-    })
-      .then(res => {
-        isInitializing.value = false;
-        if (res.backupsFound) {
-          router.push({
-            name: routes.backupDetected.name,
-          });
-        } else {
-          router.push({
-            name: routes.walletReady.name,
-          });
-        }
-      })
-      .catch(error => {
-        isInitializing.value = false;
-        console.error('Wallet initialization failed:', error);
-      });
+
+    //Redirect to the qrcode screen
+    router.push({ name: 'restore-wallet-show-qrcode' });
+
+    isInitializing.value = false;
   }
 };
+
 const isDisabled = computed(() => {
   return typePassword.value !== unref(store.password) || isInitializing.value;
 });
