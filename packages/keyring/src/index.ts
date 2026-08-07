@@ -23,6 +23,9 @@ import { MassaSigner } from "@enkryptcom/signer-massa";
 import assert from "assert";
 import configs from "./configs";
 import { pathParser } from "./utils";
+import {
+  IP1KeyShare,
+} from "@silencelaboratories/ecdsa-tss";
 
 class KeyRing {
   #storage: Storage;
@@ -34,6 +37,8 @@ class KeyRing {
   #mnemonic: MnemonicWithExtraWord;
 
   #privkeys: Record<string, string>;
+
+  #thresholdKeys: IP1KeyShare[]; 
 
   #autoLock: ReturnType<typeof setTimeout>;
 

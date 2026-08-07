@@ -19,6 +19,7 @@ import {
   NACL_VERSION,
 } from "./nacl-encrypt-decrypt";
 import { generateRandomNameWithSeed } from "./random-names";
+import { WebSocketClient } from "./socket";
 
 const bufferToHex = (buf: Buffer | Uint8Array, nozerox = false): string =>
   nozerox
@@ -56,4 +57,5 @@ export {
   naclEncrypt,
   NACL_VERSION,
   generateRandomNameWithSeed,
+  WebSocketClient,
 };

@@ -20,6 +20,14 @@ export enum HWwalletCapabilities {
   typedMessage = "typedMessage",
 }
 
+export enum ConnectionStatus {
+  connecting = "connecting",
+  open = "open",
+  closed = "closed",
+  reconnecting = "reconnecting",
+  failed = "failed",
+}
+
 enum SigningErrors {
   UnableToVerify = "Signing verification failed",
   NotSupported = "Sign type not supported",
@@ -182,6 +190,30 @@ interface EthEncryptedData {
   ciphertext: string;
 }
 
+interface TwoPartyEcdsaMessage {
+  sessionId: string;
+  round: number;
+  phase: string;
+  payload: unknown;
+}
+
+type TwoPartyEcdsaResponse = TwoPartyEcdsaMessage;
+
+interface SocketClientOptions {
+  host: string;
+  port: string;
+  requestTimeoutMs?: number; // default 3000
+  reconnectDelayMs?: number; // default 2000
+  maxReconnectAttempts?: number; // default Infinity
+  onStatusChange?: (status: ConnectionStatus) => void;
+}
+
+interface PendingRequest {
+  resolve: (response: TwoPartyEcdsaResponse) => void;
+  reject: (err: Error) => void;
+  timeout: ReturnType<typeof setTimeout>;
+}
+
 export {
   Errors,
   SignerInterface,
@@ -203,4 +235,8 @@ export {
   HWWalletAdd,
   KeyPairAdd,
   MnemonicWithExtraWord,
+  SocketClientOptions,
+  TwoPartyEcdsaMessage,
+  TwoPartyEcdsaResponse,
+  PendingRequest,
 };
