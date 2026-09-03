@@ -25,13 +25,35 @@ describe("Ethreum threhsold signing", async () => {
   }
 
 
-  it("it should sign correctly", async () => {
+  it("it should sign correctly 100 times", async () => {
     const ethreumSigner = new EthereumSigner();
-    const signature = await ethreumSigner.thresholdSign(echash, socketClientOptions, sessionId, p1KeyShare);
-    console.log("sig " + signature);
-    const verification = verify(signature, echash, "04" + p1KeyShare.public_key);
-    expect(verification).equals(
-      true,
+    const executionTimes: number[] = [];
+
+    for (let iteration = 0; iteration < 100; iteration += 1) {
+      const start = process.hrtime.bigint();
+      const signature = await ethreumSigner.thresholdSign(
+        echash,
+        socketClientOptions,
+        sessionId,
+        p1KeyShare,
+      );
+      const end = process.hrtime.bigint();
+      executionTimes.push(Number(end - start) / 1_000_000);
+
+      expect(verify(signature, echash, "04" + p1KeyShare.public_key)).equals(
+        true,
+      );
+    }
+
+    const mean =
+      executionTimes.reduce((total, time) => total + time, 0) /
+      executionTimes.length;
+    const min = Math.min(...executionTimes);
+    const max = Math.max(...executionTimes);
+
+    console.log(
+      `thresholdSign timings for ${executionTimes.length} executions: ` +
+      `mean=${mean.toFixed(2)} ms, min=${min.toFixed(2)} ms, max=${max.toFixed(2)} ms`,
     );
-  });
+  }, 300_000);
 });
